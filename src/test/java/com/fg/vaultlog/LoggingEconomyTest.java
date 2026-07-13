@@ -47,8 +47,10 @@ class LoggingEconomyTest {
                     default -> defaultValue(method.getReturnType());
                 });
 
-        VaultLogConfig config = new VaultLogConfig(true, ServicePriority.Highest, 100, true, 8);
-        LoggingEconomy loggingEconomy = new LoggingEconomy(null, delegate, store, () -> config);
+        VaultLogConfig config = new VaultLogConfig(true, ServicePriority.Highest, 100, true, 8,
+                true, true, 100);
+        LoggingEconomy loggingEconomy = new LoggingEconomy(null, delegate, store, () -> config,
+                new TransactionDeduplicator(), null);
         loggingEconomy.depositPlayer("Steve", 25.0);
         loggingEconomy.bankDeposit("guild", 50.0);
 

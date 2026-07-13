@@ -9,7 +9,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class FGVaultLogPlugin extends JavaPlugin {
     private VaultLogConfig config;
     private TransactionStore transactionStore;
+    private TransactionDeduplicator deduplicator;
     private EconomyHook economyHook;
+    private BalanceSnapshotMonitor snapshotMonitor;
+    private CmiBalanceBridge cmiBridge;
 
     @Override
     public void onEnable() {
@@ -43,16 +46,30 @@ public final class FGVaultLogPlugin extends JavaPlugin {
         pluginCommand.setExecutor(command);
         pluginCommand.setTabCompleter(command);
 
-        economyHook = new EconomyHook(this, transactionStore);
+        deduplicator = new TransactionDeduplicator();
+        economyHook = new EconomyHook(this, transactionStore, deduplicator);
+        snapshotMonitor = new BalanceSnapshotMonitor(this, transactionStore, economyHook);
+        economyHook.setSnapshotMonitor(snapshotMonitor);
+        cmiBridge = new CmiBalanceBridge(this, transactionStore, deduplicator, snapshotMonitor);
+        cmiBridge.start();
         economyHook.start();
+        snapshotMonitor.start();
         getLogger().info("FGVaultLog 已啟動；資料庫: " + transactionStore.databaseFile().getAbsolutePath());
     }
 
     @Override
     public void onDisable() {
+        if (cmiBridge != null) {
+            cmiBridge.stop();
+            cmiBridge = null;
+        }
         if (economyHook != null) {
             economyHook.stop();
             economyHook = null;
+        }
+        if (snapshotMonitor != null) {
+            snapshotMonitor.stop();
+            snapshotMonitor = null;
         }
         if (transactionStore != null) {
             transactionStore.close();
@@ -72,11 +89,25 @@ public final class FGVaultLogPlugin extends JavaPlugin {
         return economyHook;
     }
 
+    public CmiBalanceBridge cmiBridge() {
+        return cmiBridge;
+    }
+
+    public BalanceSnapshotMonitor snapshotMonitor() {
+        return snapshotMonitor;
+    }
+
     public void reloadSettings() {
         reloadConfig();
         config = VaultLogConfig.load(this);
         if (economyHook != null) {
             economyHook.reload();
+        }
+        if (cmiBridge != null) {
+            cmiBridge.reload();
+        }
+        if (snapshotMonitor != null) {
+            snapshotMonitor.reload();
         }
         getLogger().info("FGVaultLog 設定已重新載入。");
     }

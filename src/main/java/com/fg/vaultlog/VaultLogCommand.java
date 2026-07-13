@@ -56,6 +56,12 @@ public final class VaultLogCommand implements CommandExecutor, TabCompleter {
                 + (hook != null && hook.isHooked() ? ChatColor.GREEN + "已掛接" : ChatColor.RED + "未掛接"));
         sender.sendMessage(ChatColor.GRAY + "Provider: " + ChatColor.WHITE
                 + (hook == null ? "未啟動" : hook.hookedProviderName()));
+        CmiBalanceBridge cmiBridge = plugin.cmiBridge();
+        sender.sendMessage(ChatColor.GRAY + "CMI event: " + ChatColor.WHITE
+                + (cmiBridge != null && cmiBridge.isRegistered() ? "registered" : "not registered"));
+        BalanceSnapshotMonitor snapshotMonitor = plugin.snapshotMonitor();
+        sender.sendMessage(ChatColor.GRAY + "Fallback snapshot: " + ChatColor.WHITE
+                + (snapshotMonitor != null && snapshotMonitor.isActive() ? "active" : "disabled"));
         sender.sendMessage(ChatColor.GRAY + "代理優先權: " + ChatColor.WHITE
                 + (hook == null ? "unknown" : hook.proxyPriority()));
         sender.sendMessage(ChatColor.GRAY + "資料庫: " + ChatColor.WHITE
@@ -106,7 +112,7 @@ public final class VaultLogCommand implements CommandExecutor, TabCompleter {
         }
         for (VaultTransaction row : rows) {
             String status = row.success() ? ChatColor.GREEN + "成功" : ChatColor.RED + "失敗";
-            String sign = row.operation().isDeposit() ? "+" : "-";
+            String sign = row.operation().isPositive(row.amount()) ? "+" : "-";
             String amount = String.format(Locale.ROOT, "%.2f", Math.abs(row.amount()));
             String account = row.accountLabel();
             String world = row.world() == null ? "-" : row.world();

@@ -12,15 +12,22 @@ import org.bukkit.scheduler.BukkitTask;
 public final class EconomyHook {
     private final FGVaultLogPlugin plugin;
     private final TransactionStore store;
+    private final TransactionDeduplicator deduplicator;
+    private BalanceSnapshotMonitor snapshotMonitor;
 
     private BukkitTask retryTask;
     private Economy delegate;
     private LoggingEconomy proxy;
     private boolean missingProviderLogged;
 
-    public EconomyHook(FGVaultLogPlugin plugin, TransactionStore store) {
+    public EconomyHook(FGVaultLogPlugin plugin, TransactionStore store, TransactionDeduplicator deduplicator) {
         this.plugin = plugin;
         this.store = store;
+        this.deduplicator = deduplicator;
+    }
+
+    public void setSnapshotMonitor(BalanceSnapshotMonitor snapshotMonitor) {
+        this.snapshotMonitor = snapshotMonitor;
     }
 
     public void start() {
@@ -56,6 +63,10 @@ public final class EconomyHook {
         return proxy != null && delegate != null;
     }
 
+    public Economy observedProvider() {
+        return delegate;
+    }
+
     public String proxyPriority() {
         return plugin.currentConfig().priority().name();
     }
@@ -89,7 +100,7 @@ public final class EconomyHook {
             return;
         }
         unhook();
-        proxy = new LoggingEconomy(plugin, provider, store, plugin::currentConfig);
+        proxy = new LoggingEconomy(plugin, provider, store, plugin::currentConfig, deduplicator, snapshotMonitor);
         delegate = provider;
         ServicesManager services = Bukkit.getServicesManager();
         services.register(Economy.class, proxy, plugin, config.priority());

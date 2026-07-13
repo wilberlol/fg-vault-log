@@ -12,7 +12,10 @@ public record VaultLogConfig(
         ServicePriority priority,
         long hookIntervalTicks,
         boolean includeFailed,
-        int pageSize
+        int pageSize,
+        boolean cmiEnabled,
+        boolean fallbackEnabled,
+        long fallbackIntervalTicks
 ) {
 
     public static VaultLogConfig load(JavaPlugin plugin) {
@@ -23,8 +26,12 @@ public record VaultLogConfig(
         long interval = clamp(config.getLong("proxy.hook-interval-ticks", 100L), 20L, 20L * 60L);
         boolean includeFailed = config.getBoolean("logging.include-failed", true);
         int pageSize = (int) clamp(config.getInt("query.page-size", 8), 1, 50);
+        boolean cmiEnabled = config.getBoolean("cmi.enabled", true);
+        boolean fallbackEnabled = config.getBoolean("fallback.enabled", true);
+        long fallbackIntervalTicks = clamp(config.getLong("fallback.poll-interval-ticks", 100L), 20L, 20L * 60L);
 
-        return new VaultLogConfig(proxyEnabled, priority, interval, includeFailed, pageSize);
+        return new VaultLogConfig(proxyEnabled, priority, interval, includeFailed, pageSize,
+                cmiEnabled, fallbackEnabled, fallbackIntervalTicks);
     }
 
     private static ServicePriority parsePriority(JavaPlugin plugin, String raw) {

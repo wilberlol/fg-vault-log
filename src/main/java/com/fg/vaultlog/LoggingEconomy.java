@@ -17,14 +17,20 @@ public final class LoggingEconomy implements Economy {
     private final Economy delegate;
     private final TransactionStore store;
     private final Supplier<VaultLogConfig> configSupplier;
+    private final TransactionDeduplicator deduplicator;
+    private final BalanceSnapshotMonitor snapshotMonitor;
     private final CallerResolver callerResolver;
 
     public LoggingEconomy(Plugin owner, Economy delegate, TransactionStore store,
-                          Supplier<VaultLogConfig> configSupplier) {
+                          Supplier<VaultLogConfig> configSupplier,
+                          TransactionDeduplicator deduplicator,
+                          BalanceSnapshotMonitor snapshotMonitor) {
         this.owner = owner;
         this.delegate = delegate;
         this.store = store;
         this.configSupplier = configSupplier;
+        this.deduplicator = deduplicator;
+        this.snapshotMonitor = snapshotMonitor;
         this.callerResolver = new CallerResolver(owner);
     }
 
@@ -263,6 +269,7 @@ public final class LoggingEconomy implements Economy {
                                          double requestedAmount, BalanceCall beforeCall, EconomyCall call) {
         Source source = callerResolver.resolve();
         Double before = safeBalance(beforeCall);
+        deduplicator.expect(account.id(), account.name(), expectedDelta(operation, requestedAmount));
         EconomyResponse response;
         try {
             response = call.invoke();
@@ -272,6 +279,7 @@ public final class LoggingEconomy implements Economy {
             throw ex;
         }
         recordResponse(operation, eventName, AccountType.PLAYER, account, world, requestedAmount, before, response, source);
+        observeResponse(account, response);
         return response;
     }
     private void recordResponse(TransactionOperation operation, String eventName, AccountType accountType, AccountRef account,
@@ -341,6 +349,20 @@ public final class LoggingEconomy implements Economy {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private static double expectedDelta(TransactionOperation operation, double amount) {
+        double absolute = Math.abs(amount);
+        return operation == TransactionOperation.WITHDRAW_PLAYER ? -absolute : absolute;
+    }
+
+    private void observeResponse(AccountRef account, EconomyResponse response) {
+        if (response == null || !Double.isFinite(response.balance)) {
+            return;
+        }
+        if (snapshotMonitor != null) {
+            snapshotMonitor.observe(account.id(), account.name(), response.balance);
+        }
     }
 
     private static AccountRef player(String playerName) {

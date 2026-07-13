@@ -16,3 +16,14 @@ logging:
 query:
   # 每頁最多顯示的筆數，避免管理員查詢時一次塞滿聊天視窗。
   page-size: 8
+
+cmi:
+  # CMI 存在時，額外記錄 CMI 原生餘額事件，例如 /money give。
+  # 關閉後仍會保留 Vault Economy 代理紀錄。
+  enabled: true
+
+fallback:
+  # 兜底偵測沒有經過 Vault、也沒有原生 event 的直接餘額變更。
+  # 只能知道餘額差額，無法從事後快照推導真實原因，紀錄會標示 UNKNOWN_EXTERNAL_CHANGE。
+  enabled: true
+  poll-interval-ticks: 100
