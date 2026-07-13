@@ -29,6 +29,7 @@ class TransactionStoreTest {
 
         assertEquals(1, steveRows.size());
         assertEquals("first", steveRows.get(0).id());
+        assertEquals("Economy#depositPlayer(String,double)", steveRows.get(0).eventName());
         assertEquals(2, allRows.size());
         assertEquals("second", allRows.get(0).id());
         assertFalse(allRows.get(0).success());
@@ -44,6 +45,9 @@ class TransactionStoreTest {
                 id,
                 Instant.now(),
                 operation,
+                operation == TransactionOperation.DEPOSIT_PLAYER
+                        ? "Economy#depositPlayer(String,double)"
+                        : "Economy#withdrawPlayer(String,double)",
                 AccountType.PLAYER,
                 account,
                 account,

@@ -116,7 +116,15 @@ public final class VaultLogCommand implements CommandExecutor, TabCompleter {
                     + ChatColor.AQUA + " " + account
                     + ChatColor.YELLOW + " " + sign + amount
                     + ChatColor.GRAY + " world=" + world
-                    + ChatColor.DARK_GRAY + " provider=" + row.provider());
+                    + ChatColor.DARK_GRAY + " provider=" + row.provider()
+                    + " tx=" + shortId(row.id()));
+            sender.sendMessage(ChatColor.GRAY + "  event=" + row.eventName()
+                    + " sourcePlugin=" + row.sourcePlugin()
+                    + " sourceCall=" + row.sourceClass());
+            sender.sendMessage(ChatColor.GRAY + "  balance=" + formatBalance(row.balanceBefore())
+                    + " -> " + formatBalance(row.balanceAfter())
+                    + " requested=" + formatMoney(row.requestedAmount())
+                    + " applied=" + formatMoney(row.amount()));
             if (!row.success() && row.message() != null && !row.message().isBlank()) {
                 sender.sendMessage(ChatColor.RED + "  原因: " + row.message());
             }
@@ -126,8 +134,20 @@ public final class VaultLogCommand implements CommandExecutor, TabCompleter {
     private static void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(ChatColor.GOLD + "[FGVaultLog] 指令");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " status" + ChatColor.GRAY + " - 查看 Vault provider 掛接狀態");
-        sender.sendMessage(ChatColor.YELLOW + "/" + label + " latest [玩家或銀行] [頁數]" + ChatColor.GRAY + " - 查詢金流");
+        sender.sendMessage(ChatColor.YELLOW + "/" + label + " latest [玩家] [頁數]" + ChatColor.GRAY + " - 查詢玩家金流與詳細 event");
         sender.sendMessage(ChatColor.YELLOW + "/" + label + " reload" + ChatColor.GRAY + " - 重新載入設定");
+    }
+
+    private static String shortId(String id) {
+        return id == null ? "unknown" : id.substring(0, Math.min(8, id.length()));
+    }
+
+    private static String formatMoney(double amount) {
+        return String.format(Locale.ROOT, "%.2f", amount);
+    }
+
+    private static String formatBalance(Double amount) {
+        return amount == null ? "unknown" : formatMoney(amount);
     }
 
     private static boolean isPositiveInteger(String value) {

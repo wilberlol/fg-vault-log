@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 
 /** Best-effort source plugin attribution for a Vault API call. */
 public final class CallerResolver {
@@ -16,7 +17,16 @@ public final class CallerResolver {
 
     public Source resolve() {
         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        Plugin[] plugins = Bukkit.getPluginManager().getPlugins();
+        PluginManager pluginManager;
+        try {
+            pluginManager = Bukkit.getPluginManager();
+        } catch (RuntimeException ex) {
+            return Source.UNKNOWN;
+        }
+        if (pluginManager == null) {
+            return Source.UNKNOWN;
+        }
+        Plugin[] plugins = pluginManager.getPlugins();
         for (StackTraceElement element : stack) {
             String className = element.getClassName();
             if (isInternal(className)) {

@@ -8,6 +8,7 @@ public record VaultTransaction(
         String id,
         Instant occurredAt,
         TransactionOperation operation,
+        String eventName,
         AccountType accountType,
         String accountId,
         String accountName,
@@ -27,6 +28,7 @@ public record VaultTransaction(
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(occurredAt, "occurredAt");
         Objects.requireNonNull(operation, "operation");
+        eventName = Objects.requireNonNullElse(eventName, "unknown");
         Objects.requireNonNull(accountType, "accountType");
         accountId = Objects.requireNonNullElse(accountId, "");
         responseType = Objects.requireNonNullElse(responseType, "UNKNOWN");

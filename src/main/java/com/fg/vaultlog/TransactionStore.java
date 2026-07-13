@@ -104,15 +104,16 @@ public final class TransactionStore implements AutoCloseable {
 
     private void insertSafely(VaultTransaction transaction) {
         String sql = "INSERT INTO transactions ("
-                + "id, occurred_at, operation, account_type, account_id, account_name, world, "
+                + "id, occurred_at, operation, event_name, account_type, account_id, account_name, world, "
                 + "requested_amount, amount, balance_before, balance_after, success, response_type, "
                 + "message, provider, source_plugin, source_class"
-                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             int index = 1;
             statement.setString(index++, transaction.id());
             statement.setString(index++, transaction.occurredAt().toString());
             statement.setString(index++, transaction.operation().name());
+            statement.setString(index++, transaction.eventName());
             statement.setString(index++, transaction.accountType().name());
             statement.setString(index++, transaction.accountId());
             setNullableString(statement, index++, transaction.accountName());
@@ -137,7 +138,7 @@ public final class TransactionStore implements AutoCloseable {
                              CompletableFuture<List<VaultTransaction>> future) {
         String normalized = accountQuery == null ? "" : accountQuery.trim();
         boolean all = normalized.isEmpty() || normalized.equals("*");
-        String sql = "SELECT id, occurred_at, operation, account_type, account_id, account_name, world, "
+        String sql = "SELECT id, occurred_at, operation, event_name, account_type, account_id, account_name, world, "
                 + "requested_amount, amount, balance_before, balance_after, success, response_type, message, "
                 + "provider, source_plugin, source_class FROM transactions "
                 + (all ? "" : "WHERE account_id LIKE ? COLLATE NOCASE OR account_name LIKE ? COLLATE NOCASE ")
@@ -169,6 +170,7 @@ public final class TransactionStore implements AutoCloseable {
                 rows.getString("id"),
                 Instant.parse(rows.getString("occurred_at")),
                 TransactionOperation.valueOf(rows.getString("operation")),
+                rows.getString("event_name"),
                 AccountType.valueOf(rows.getString("account_type")),
                 rows.getString("account_id"),
                 rows.getString("account_name"),
@@ -199,6 +201,7 @@ public final class TransactionStore implements AutoCloseable {
                     + "id TEXT PRIMARY KEY,"
                     + "occurred_at TEXT NOT NULL,"
                     + "operation TEXT NOT NULL,"
+                    + "event_name TEXT NOT NULL DEFAULT 'unknown',"
                     + "account_type TEXT NOT NULL,"
                     + "account_id TEXT NOT NULL,"
                     + "account_name TEXT,"
@@ -214,10 +217,27 @@ public final class TransactionStore implements AutoCloseable {
                     + "source_plugin TEXT NOT NULL,"
                     + "source_class TEXT NOT NULL"
                     + ")");
+            ensureEventColumn(statement);
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_account "
                     + "ON transactions(account_id, occurred_at DESC)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_time "
                     + "ON transactions(occurred_at DESC)");
+        }
+    }
+
+    private static void ensureEventColumn(Statement statement) throws SQLException {
+        boolean exists = false;
+        try (ResultSet columns = statement.executeQuery("PRAGMA table_info(transactions)")) {
+            while (columns.next()) {
+                if ("event_name".equalsIgnoreCase(columns.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            statement.executeUpdate("ALTER TABLE transactions ADD COLUMN event_name "
+                    + "TEXT NOT NULL DEFAULT 'unknown'");
         }
     }
 

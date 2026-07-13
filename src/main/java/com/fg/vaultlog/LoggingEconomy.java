@@ -129,66 +129,64 @@ public final class LoggingEconomy implements Economy {
 
     @Override
     public EconomyResponse withdrawPlayer(String playerName, double amount) {
-        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, player(playerName), null, amount,
+        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, "Economy#withdrawPlayer(String,double)", player(playerName), null, amount,
                 () -> delegate.getBalance(playerName), () -> delegate.withdrawPlayer(playerName, amount));
     }
 
     @Override
     public EconomyResponse withdrawPlayer(OfflinePlayer player, double amount) {
-        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, player(player), null, amount,
+        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, "Economy#withdrawPlayer(OfflinePlayer,double)", player(player), null, amount,
                 () -> delegate.getBalance(player), () -> delegate.withdrawPlayer(player, amount));
     }
 
     @Override
     public EconomyResponse withdrawPlayer(String playerName, String worldName, double amount) {
-        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, player(playerName), worldName, amount,
+        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, "Economy#withdrawPlayer(String,String,double)", player(playerName), worldName, amount,
                 () -> delegate.getBalance(playerName, worldName),
                 () -> delegate.withdrawPlayer(playerName, worldName, amount));
     }
 
     @Override
     public EconomyResponse withdrawPlayer(OfflinePlayer player, String worldName, double amount) {
-        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, player(player), worldName, amount,
+        return mutatePlayer(TransactionOperation.WITHDRAW_PLAYER, "Economy#withdrawPlayer(OfflinePlayer,String,double)", player(player), worldName, amount,
                 () -> delegate.getBalance(player, worldName),
                 () -> delegate.withdrawPlayer(player, worldName, amount));
     }
 
     @Override
     public EconomyResponse depositPlayer(String playerName, double amount) {
-        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, player(playerName), null, amount,
+        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, "Economy#depositPlayer(String,double)", player(playerName), null, amount,
                 () -> delegate.getBalance(playerName), () -> delegate.depositPlayer(playerName, amount));
     }
 
     @Override
     public EconomyResponse depositPlayer(OfflinePlayer player, double amount) {
-        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, player(player), null, amount,
+        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, "Economy#depositPlayer(OfflinePlayer,double)", player(player), null, amount,
                 () -> delegate.getBalance(player), () -> delegate.depositPlayer(player, amount));
     }
 
     @Override
     public EconomyResponse depositPlayer(String playerName, String worldName, double amount) {
-        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, player(playerName), worldName, amount,
+        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, "Economy#depositPlayer(String,String,double)", player(playerName), worldName, amount,
                 () -> delegate.getBalance(playerName, worldName),
                 () -> delegate.depositPlayer(playerName, worldName, amount));
     }
 
     @Override
     public EconomyResponse depositPlayer(OfflinePlayer player, String worldName, double amount) {
-        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, player(player), worldName, amount,
+        return mutatePlayer(TransactionOperation.DEPOSIT_PLAYER, "Economy#depositPlayer(OfflinePlayer,String,double)", player(player), worldName, amount,
                 () -> delegate.getBalance(player, worldName),
                 () -> delegate.depositPlayer(player, worldName, amount));
     }
 
     @Override
     public EconomyResponse bankWithdraw(String bankName, double amount) {
-        return mutateBank(TransactionOperation.BANK_WITHDRAW, bank(bankName), amount,
-                () -> balanceOfBank(bankName), () -> delegate.bankWithdraw(bankName, amount));
+        return delegate.bankWithdraw(bankName, amount);
     }
 
     @Override
     public EconomyResponse bankDeposit(String bankName, double amount) {
-        return mutateBank(TransactionOperation.BANK_DEPOSIT, bank(bankName), amount,
-                () -> balanceOfBank(bankName), () -> delegate.bankDeposit(bankName, amount));
+        return delegate.bankDeposit(bankName, amount);
     }
 
     @Override
@@ -261,7 +259,7 @@ public final class LoggingEconomy implements Economy {
         return delegate.createPlayerAccount(player, worldName);
     }
 
-    private EconomyResponse mutatePlayer(TransactionOperation operation, AccountRef account, String world,
+    private EconomyResponse mutatePlayer(TransactionOperation operation, String eventName, AccountRef account, String world,
                                          double requestedAmount, BalanceCall beforeCall, EconomyCall call) {
         Source source = callerResolver.resolve();
         Double before = safeBalance(beforeCall);
@@ -269,36 +267,14 @@ public final class LoggingEconomy implements Economy {
         try {
             response = call.invoke();
         } catch (RuntimeException ex) {
-            record(operation, AccountType.PLAYER, account, world, requestedAmount, requestedAmount,
+            record(operation, eventName, AccountType.PLAYER, account, world, requestedAmount, requestedAmount,
                     before, null, false, "EXCEPTION", message(ex), source);
             throw ex;
         }
-        recordResponse(operation, AccountType.PLAYER, account, world, requestedAmount, before, response, source);
+        recordResponse(operation, eventName, AccountType.PLAYER, account, world, requestedAmount, before, response, source);
         return response;
     }
-
-    private EconomyResponse mutateBank(TransactionOperation operation, AccountRef account,
-                                       double requestedAmount, BalanceCall beforeCall, EconomyCall call) {
-        VaultLogConfig config = configSupplier.get();
-        if (!config.includeBankTransactions()) {
-            return call.invoke();
-        }
-
-        Source source = callerResolver.resolve();
-        Double before = safeBalance(beforeCall);
-        EconomyResponse response;
-        try {
-            response = call.invoke();
-        } catch (RuntimeException ex) {
-            record(operation, AccountType.BANK, account, null, requestedAmount, requestedAmount,
-                    before, null, false, "EXCEPTION", message(ex), source);
-            throw ex;
-        }
-        recordResponse(operation, AccountType.BANK, account, null, requestedAmount, before, response, source);
-        return response;
-    }
-
-    private void recordResponse(TransactionOperation operation, AccountType accountType, AccountRef account,
+    private void recordResponse(TransactionOperation operation, String eventName, AccountType accountType, AccountRef account,
                                 String world, double requestedAmount, Double before,
                                 EconomyResponse response, Source source) {
         boolean success = response != null && response.transactionSuccess();
@@ -311,11 +287,11 @@ public final class LoggingEconomy implements Economy {
         Double after = response == null || !Double.isFinite(response.balance) ? null : response.balance;
         String responseType = response == null || response.type == null ? "NULL" : response.type.name();
         String errorMessage = response == null ? "provider returned null response" : response.errorMessage;
-        record(operation, accountType, account, world, requestedAmount, applied, before, after,
+        record(operation, eventName, accountType, account, world, requestedAmount, applied, before, after,
                 success, responseType, errorMessage, source);
     }
 
-    private void record(TransactionOperation operation, AccountType accountType, AccountRef account, String world,
+    private void record(TransactionOperation operation, String eventName, AccountType accountType, AccountRef account, String world,
                         double requestedAmount, double appliedAmount, Double before, Double after,
                         boolean success, String responseType, String message, Source source) {
         String providerName;
@@ -328,6 +304,7 @@ public final class LoggingEconomy implements Economy {
                 UUID.randomUUID().toString(),
                 Instant.now(),
                 operation,
+                eventName,
                 accountType,
                 account.id(),
                 account.name(),
@@ -354,11 +331,6 @@ public final class LoggingEconomy implements Economy {
         }
     }
 
-    private double balanceOfBank(String bankName) {
-        EconomyResponse response = delegate.bankBalance(bankName);
-        return response == null ? Double.NaN : response.balance;
-    }
-
     private static String message(RuntimeException ex) {
         String message = ex.getMessage();
         if (message == null || message.isBlank()) {
@@ -382,11 +354,6 @@ public final class LoggingEconomy implements Economy {
         }
         String id = player.getUniqueId() == null ? "" : player.getUniqueId().toString();
         return new AccountRef(id, player.getName());
-    }
-
-    private static AccountRef bank(String bankName) {
-        String value = bankName == null ? "" : bankName;
-        return new AccountRef(value, value);
     }
 
     @FunctionalInterface

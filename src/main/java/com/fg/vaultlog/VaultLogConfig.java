@@ -12,7 +12,6 @@ public record VaultLogConfig(
         ServicePriority priority,
         long hookIntervalTicks,
         boolean includeFailed,
-        boolean includeBankTransactions,
         int pageSize
 ) {
 
@@ -23,10 +22,9 @@ public record VaultLogConfig(
         ServicePriority priority = parsePriority(plugin, config.getString("proxy.priority", "HIGHEST"));
         long interval = clamp(config.getLong("proxy.hook-interval-ticks", 100L), 20L, 20L * 60L);
         boolean includeFailed = config.getBoolean("logging.include-failed", true);
-        boolean includeBanks = config.getBoolean("logging.include-bank-transactions", true);
         int pageSize = (int) clamp(config.getInt("query.page-size", 8), 1, 50);
 
-        return new VaultLogConfig(proxyEnabled, priority, interval, includeFailed, includeBanks, pageSize);
+        return new VaultLogConfig(proxyEnabled, priority, interval, includeFailed, pageSize);
     }
 
     private static ServicePriority parsePriority(JavaPlugin plugin, String raw) {
