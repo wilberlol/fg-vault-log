@@ -1,0 +1,19 @@
+# FGVaultLog 會將攔截到的 Vault Economy 存款/提款寫入 plugins/FGVaultLog/transactions.db。
+
+proxy:
+  # 啟用後會以高優先權註冊一個透明 Economy 代理，再轉呼叫原本的 provider。
+  enabled: true
+  # HIGHEST 可讓多數使用 Vault API 的插件取得代理；若伺服器有其他高優先權 provider，請看 /vaultlog status。
+  priority: HIGHEST
+  # 找不到 Economy provider 時的重試間隔，單位為 ticks；20 ticks 約等於 1 秒。
+  hook-interval-ticks: 100
+
+logging:
+  # 是否記錄 Vault 回傳失敗的交易；建議保留，方便追查餘額不足或 provider 錯誤。
+  include-failed: true
+  # 是否記錄銀行帳戶的 bankDeposit/bankWithdraw。
+  include-bank-transactions: true
+
+query:
+  # 每頁最多顯示的筆數，避免管理員查詢時一次塞滿聊天視窗。
+  page-size: 8

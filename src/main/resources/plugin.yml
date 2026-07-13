@@ -1,0 +1,21 @@
+name: FGVaultLog
+version: ${project.version}
+main: com.fg.vaultlog.FGVaultLogPlugin
+api-version: '1.20'
+author: wilber
+description: Vault Economy 金流稽核紀錄插件
+depend: [Vault]
+libraries:
+  - org.xerial:sqlite-jdbc:3.46.1.3
+
+commands:
+  vaultlog:
+    description: 查詢 Vault Economy 金流紀錄
+    usage: /vaultlog <status|latest|reload>
+    aliases: [vlog]
+    permission: vaultlog.admin
+
+permissions:
+  vaultlog.admin:
+    description: 管理 FGVaultLog、查看金流紀錄與重新載入設定
+    default: op
